@@ -32,39 +32,17 @@ function makeCustomConsole() {
     return console;
 }
 
-/**
- * Test the subtitle file for Brotli compression.
- * @param {!string} url the URL of the subtitle file.
- * @returns {boolean} Brotli compression found or not.
- */
-function isBrotliFile(url) {
-    // Search for parameters
-    var len = url.indexOf("?");
-
-    if (len === -1) {
-        len = url.length;
-    }
-
-    return url.endsWith(".br", len);
-}
-
 Module = Module || {};
 
 Module["preRun"] = Module["preRun"] || [];
 
 Module["preRun"].push(function () {
-    var i;
-
     Module["FS_createPath"]("/", "fonts", true, true);
     Module["FS_createPath"]("/", "fontconfig", true, true);
 
     if (!self.subContent) {
         // We can use sync xhr cause we're inside Web Worker
-        if (isBrotliFile(self.subUrl)) {
-            self.subContent = Module["BrotliDecode"](readBinary(self.subUrl))
-        } else {
-            self.subContent = read_(self.subUrl);
-        }
+        self.subContent = read_(self.subUrl);
     }
 
     if (self.availableFonts && self.availableFonts.length !== 0) {
@@ -90,10 +68,12 @@ Module["preRun"].push(function () {
 
     self.subContent = null;
 
+    self.loadFontFile(".fallback-", self.fallbackFont);
+
     //Module["FS"].mount(Module["FS"].filesystems.IDBFS, {}, '/fonts');
     var fontFiles = self.fontFiles || [];
-    for (i = 0; i < fontFiles.length; i++) {
-        Module["FS_createPreloadedFile"]("/fonts", 'font' + i + '-' + fontFiles[i].split('/').pop(), fontFiles[i], true, true);
+    for (var i = 0; i < fontFiles.length; i++) {
+        self.loadFontFile('font' + i + '-', fontFiles[i]);
     }
 });
 
@@ -107,7 +87,8 @@ Module['onRuntimeInitialized'] = function () {
     self.blendW = Module._malloc(4);
     self.blendH = Module._malloc(4);
 
-    self.octObj.initLibrary(screen.width, screen.height);
+    self.octObj.initLibrary(screen.width, screen.height, "/fonts/.fallback-" + self.fallbackFont.split('/').pop());
+    self.octObj.setDropAnimations(self.dropAllAnimations);
     self.octObj.createTrack("/sub.ass");
     self.ass_track = self.octObj.track;
     self.ass_library = self.octObj.ass_library;

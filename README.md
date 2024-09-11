@@ -114,6 +114,8 @@ When creating an instance of SubtitleOctopus, you can set the following options:
 - `fonts`: An array of links to the fonts used in the subtitle. (Optional)
 - `availableFonts`: Object with all available fonts - Key is font name in lower
   case, value is link: `{"arial": "/font1.ttf"}` (Optional)
+- `fallbackFont`: URL to override fallback font, for example, with a CJK one. Default fallback font is Liberation Sans (Optional)
+- `lazyFileLoading`: A boolean, whether to load files in a lazy way via [FS.createLazyFile()](https://emscripten.org/docs/api_reference/Filesystem-API.html#FS.createLazyFile). [Requires](https://github.com/emscripten-core/emscripten/blob/c7b21c32fef92799da05d15ba1939b6394fe0373/src/library_fs.js#L1679-L1856) `Access-Control-Expose-Headers` for `Accept-Ranges, Content-Length, and Content-Encoding`. If encoding is compressed or length is not set, file will be fully fetched instead of just a HEAD request.
 - `timeOffset`: The amount of time the subtitles should be offset from the
   video. (Default: `0`)
 - `onReady`: Function that's called when SubtitlesOctopus is ready. (Optional)
@@ -140,6 +142,12 @@ When creating an instance of SubtitleOctopus, you can set the following options:
 - `maxRenderHeight`: The maximum rendering height of the subtitles canvas.
                      Beyond this subtitles will be upscaled by the browser.
                      (Default: `0` - no limit)
+- `dropAllAnimations`: If set to true, attempt to discard all animated tags.
+                       Enabling this may severly mangle complex subtitles and
+                       should only be considered as an last ditch effort of uncertain success
+                       for hardware otherwise incapable of displaing anything.
+                       Will not reliably work with manually edited or allocated events.
+                       (Default: `false` - do nothing)
 
 ### Rendering Modes
 #### JS Blending
@@ -168,12 +176,6 @@ simply will not draw anything in canvas, mostly on low end devices.
 
 **WARNING: Experimental, not stable and not working in some browsers**
 
-
-### Brotli Compressed Subtitles
-The SubtitleOctopus allow the use of compressed subtitles in brotli format,
-saving bandwidth and reducing library startup time
-
-To use, just run: `brotli subFile.ass` and use the .br result file with the subUrl option
 
 ## How to build?
 

@@ -8,6 +8,7 @@ self.nextIsRaf = false;
 self.lastCurrentTimeReceivedAt = Date.now();
 self.targetFps = 24;
 self.libassMemoryLimit = 0; // in MiB
+self.dropAllAnimations = false;
 
 self.width = 0;
 self.height = 0;
@@ -31,12 +32,17 @@ self.writeFontToFS = function(font) {
     self.fontMap_[font] = true;
 
     if (!self.availableFonts.hasOwnProperty(font)) return;
-    var content = readBinary(self.availableFonts[font]);
 
-    Module["FS"].writeFile('/fonts/font' + (self.fontId++) + '-' + self.availableFonts[font].split('/').pop(), content, {
-        encoding: 'binary'
-    });
+    self.loadFontFile('font' + (self.fontId++) + '-', self.availableFonts[font]);
 };
+
+self.loadFontFile = function (fontId, path) {
+    if (self.lazyFileLoading && path.indexOf("blob:") !== 0) {
+        Module["FS"].createLazyFile("/fonts", fontId + path.split('/').pop(), path, true, false);
+    } else {
+        Module["FS"].createPreloadedFile("/fonts", fontId + path.split('/').pop(), path, true, false);
+    }
+}
 
 /**
  * Write all font's mentioned in the .ass file to the virtual FS.
@@ -91,6 +97,8 @@ self.setTrack = function (content) {
     // Tell libass to render the new track
     self.octObj.createTrack("/sub.ass");
     self.ass_track = self.octObj.track;
+    self.ass_renderer = self.octObj.ass_renderer;
+    self.ass_library = self.octObj.ass_library;
     self.getRenderMethod()();
 };
 
@@ -108,11 +116,7 @@ self.freeTrack = function () {
  */
 self.setTrackByUrl = function (url) {
     var content = "";
-    if (isBrotliFile(url)) {
-        content = Module["BrotliDecode"](readBinary(url))
-    } else {
-        content = read_(url);
-    }
+    content = read_(url);
     self.setTrack(content);
 };
 
@@ -550,6 +554,8 @@ function onMessageFromMainEmscriptenThread(message) {
             }
 
             self.availableFonts = message.data.availableFonts;
+            self.fallbackFont = message.data.fallbackFont;
+            self.lazyFileLoading = message.data.lazyFileLoading;
             self.debug = message.data.debug;
             if (!hasNativeConsole && self.debug) {
                 console = makeCustomConsole();
@@ -565,6 +571,7 @@ function onMessageFromMainEmscriptenThread(message) {
             self.targetFps = message.data.targetFps || self.targetFps;
             self.libassMemoryLimit = message.data.libassMemoryLimit || self.libassMemoryLimit;
             self.libassGlyphLimit = message.data.libassGlyphLimit || 0;
+            self.dropAllAnimations = !!message.data.dropAllAnimations || self.dropAllAnimations;
             removeRunDependency('worker-init');
             postMessage({
                 target: "ready",
